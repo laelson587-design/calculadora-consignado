@@ -10,6 +10,9 @@
 <meta name="description" content="Quanto o cliente paga ao antecipar parcelas ou quitar um contrato de empréstimo.">
 
 <!-- Aberta pela tela de início, roda sem a barra de endereço, como aplicativo. -->
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icone-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icone-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -864,6 +867,14 @@
     .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   render();
+
+  // Guarda uma cópia da página no aparelho: é o que permite abrir sem sinal.
+  // Falha aqui não quebra nada — apenas não haverá modo offline.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    });
+  }
 </script>
 </body>
 </html>
