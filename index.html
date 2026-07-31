@@ -1,0 +1,888 @@
+<title>Calculadora de Amortização</title>
+
+<style>
+  /* ---------- Tokens: tema claro (padrão) ----------
+     Neutros com viés esverdeado, como papel de segurança e tinta de razão
+     contábil. O acento é o verde-petróleo da amortização; a terracota
+     marca custo. Cada cor tem um papel e não disputa com a outra. */
+  :root {
+    --paper:    #f4f6f3;
+    --surface:  #ffffff;
+    --sunken:   #eef1ed;
+    --ink:      #14201d;
+    --ink-2:    #5c6d67;
+    --ink-3:    #8a9994;
+    --line:     #dce2df;
+    --line-2:   #c6d0cc;
+    --accent:   #0d6355;
+    --accent-w: #0d635518;
+    --cost:     #9c4028;
+    --cost-w:   #9c402818;
+    --focus:    #0d6355;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:    #0c1412;
+      --surface:  #141e1b;
+      --sunken:   #101917;
+      --ink:      #e9eeea;
+      --ink-2:    #94a49e;
+      --ink-3:    #6b7b76;
+      --line:     #24322e;
+      --line-2:   #32433e;
+      --accent:   #46b8a0;
+      --accent-w: #46b8a022;
+      --cost:     #dd8161;
+      --cost-w:   #dd816122;
+      --focus:    #46b8a0;
+    }
+  }
+
+  /* O botão de tema do visualizador carimba data-theme na raiz e precisa
+     vencer o media query nos dois sentidos. */
+  :root[data-theme="light"] {
+    --paper:    #f4f6f3;
+    --surface:  #ffffff;
+    --sunken:   #eef1ed;
+    --ink:      #14201d;
+    --ink-2:    #5c6d67;
+    --ink-3:    #8a9994;
+    --line:     #dce2df;
+    --line-2:   #c6d0cc;
+    --accent:   #0d6355;
+    --accent-w: #0d635518;
+    --cost:     #9c4028;
+    --cost-w:   #9c402818;
+    --focus:    #0d6355;
+  }
+
+  :root[data-theme="dark"] {
+    --paper:    #0c1412;
+    --surface:  #141e1b;
+    --sunken:   #101917;
+    --ink:      #e9eeea;
+    --ink-2:    #94a49e;
+    --ink-3:    #6b7b76;
+    --line:     #24322e;
+    --line-2:   #32433e;
+    --accent:   #46b8a0;
+    --accent-w: #46b8a022;
+    --cost:     #dd8161;
+    --cost-w:   #dd816122;
+    --focus:    #46b8a0;
+  }
+
+  :root {
+    --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* Os números falam em monoespaçada: é a voz do instrumento, e é o que
+       faz as colunas alinharem de verdade. */
+    --num: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+  }
+
+  body {
+    margin: 0;
+    padding: 20px 16px 64px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 620px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* ---------- Cabeçalho ---------- */
+  .head { display: flex; flex-direction: column; gap: 4px; }
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+  }
+
+  .sub { margin: 0; color: var(--ink-2); font-size: 13.5px; }
+
+  /* ---------- Blocos ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  label { display: flex; flex-direction: column; gap: 5px; }
+
+  .lbl {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  input[type="number"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--num);
+    font-size: 16px; /* 16px evita o zoom automático do iOS ao focar */
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="number"]:focus-visible,
+  button:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  .derivado {
+    font-family: var(--num);
+    font-size: 12px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .derivado b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Encargos recolhidos ---------- */
+  details { border-top: 1px solid var(--line); padding-top: 13px; }
+
+  summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+
+  summary::-webkit-details-marker { display: none; }
+
+  summary::before {
+    content: "＋";
+    font-family: var(--num);
+    color: var(--accent);
+  }
+
+  details[open] summary::before { content: "－"; }
+
+  details[open] summary { margin-bottom: 13px; }
+
+  .hint { margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-3); }
+
+  /* ---------- Alternadores ---------- */
+  .seg {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    background: var(--sunken);
+    border-radius: 9px;
+  }
+
+  .seg button {
+    flex: 1;
+    padding: 9px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--ink-2);
+    font-family: var(--ui);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .seg button[aria-pressed="true"] {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px #0000001f;
+  }
+
+  .seg button:disabled { opacity: .38; cursor: not-allowed; }
+
+  /* ---------- Antecipação: a resposta que ele veio buscar ---------- */
+  .destaque {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 14px 15px;
+    background: var(--accent-w);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+  }
+
+  .destaque-val {
+    font-family: var(--num);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+    color: var(--accent);
+  }
+
+  .destaque-note { font-size: 12.5px; color: var(--ink-2); }
+
+  .destaque-note b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Números do contrato ---------- */
+  .heroes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+  .hero-val {
+    font-family: var(--num);
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+  }
+
+  .hero + .hero .hero-val { color: var(--accent); }
+
+  .hero-note { font-size: 11.5px; color: var(--ink-2); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+  .stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+  .stat-v {
+    font-family: var(--num);
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-v.cost { color: var(--cost); }
+
+  .stat-l {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* ---------- Composição dos encargos ---------- */
+  .encargos { display: flex; flex-direction: column; gap: 7px; }
+
+  .enc-linha {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12.5px;
+  }
+
+  .enc-linha span:first-child { color: var(--ink-2); }
+
+  .enc-linha span:last-child {
+    font-family: var(--num);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .enc-linha.soma {
+    padding-top: 7px;
+    border-top: 1px solid var(--line);
+    font-weight: 600;
+  }
+
+  .enc-linha.soma span:first-child { color: var(--ink); }
+  .enc-linha.soma span:last-child { color: var(--cost); }
+
+  /* ---------- Gráfico ---------- */
+  .chart-box { display: flex; flex-direction: column; gap: 8px; }
+
+  canvas { width: 100%; height: 132px; display: block; }
+
+  .legend { display: flex; gap: 16px; font-size: 11.5px; color: var(--ink-2); }
+
+  .key { display: inline-flex; align-items: center; gap: 6px; }
+
+  .dot { width: 9px; height: 9px; border-radius: 2px; }
+
+  /* ---------- Tabela ---------- */
+  .t-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+
+  .scroll { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+
+  table { width: 100%; border-collapse: collapse; font-family: var(--num); font-size: 12.5px; }
+
+  th {
+    text-align: right;
+    padding: 0 0 7px;
+    font-family: var(--ui);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--line-2);
+  }
+
+  th:first-child, td:first-child { text-align: left; }
+
+  td {
+    padding: 7px 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--line);
+  }
+
+  th + th, td + td { padding-left: 14px; }
+
+  tbody tr:last-child td { border-bottom: 0; }
+
+  .n { color: var(--ink-3); }
+  .juros { color: var(--cost); }
+  .amort { color: var(--accent); }
+  .saldo { font-weight: 600; }
+  .hoje { color: var(--accent); font-weight: 700; }
+  th.hoje-h { color: var(--accent); }
+
+  tbody tr.paga td { opacity: .4; }
+  tbody tr.final td { background: var(--accent-w); }
+  tbody tr.final .n { color: var(--accent); font-weight: 700; }
+
+  .note {
+    margin: 0;
+    padding: 12px 14px;
+    background: var(--cost-w);
+    border-left: 2px solid var(--cost);
+    border-radius: 0 8px 8px 0;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+
+  .note strong { color: var(--ink); }
+
+  .erro { color: var(--cost); font-size: 13px; }
+
+  @media (max-width: 420px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 340px) {
+    .heroes { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <span class="eyebrow">Crédito consignado</span>
+    <h1>Calculadora de amortização</h1>
+    <p class="sub">
+      Quanto vale cada parcela paga hoje, o saldo para quitar e o custo efetivo
+      do contrato.
+    </p>
+  </div>
+
+  <!-- Entradas -->
+  <div class="card">
+    <div class="seg" role="group" aria-label="O que você já sabe">
+      <button type="button" id="btPorParcela" aria-pressed="true">Sei a parcela</button>
+      <button type="button" id="btPorValor" aria-pressed="false">Sei o valor emprestado</button>
+    </div>
+
+    <div class="grid-2">
+      <label>
+        <span class="lbl" id="lblPrincipal">Valor da parcela</span>
+        <input type="number" id="principal" value="260" min="0" step="10" inputmode="decimal">
+      </label>
+      <label>
+        <span class="lbl">Juros % ao mês</span>
+        <input type="number" id="taxa" value="22" min="0" step="0.01" inputmode="decimal">
+      </label>
+      <label>
+        <span class="lbl">Prazo (parcelas)</span>
+        <input type="number" id="prazo" value="9" min="1" max="600" step="1" inputmode="numeric">
+      </label>
+      <label>
+        <span class="lbl">Parcelas já pagas</span>
+        <input type="number" id="pagas" value="0" min="0" step="1" inputmode="numeric">
+      </label>
+    </div>
+
+    <p class="derivado" id="derivado"></p>
+
+    <div class="seg" role="group" aria-label="Sistema de amortização">
+      <button type="button" id="btPrice" aria-pressed="true">Price</button>
+      <button type="button" id="btSac" aria-pressed="false">SAC</button>
+    </div>
+
+    <details>
+      <summary>Encargos e tarifas</summary>
+      <div class="grid-2">
+        <label>
+          <span class="lbl">IOF diário % a.d.</span>
+          <input type="number" id="iofDia" value="0.0082" min="0" step="0.0001" inputmode="decimal">
+        </label>
+        <label>
+          <span class="lbl">IOF adicional %</span>
+          <input type="number" id="iofAdic" value="0.38" min="0" step="0.01" inputmode="decimal">
+        </label>
+        <label>
+          <span class="lbl">Tarifa de cadastro R$</span>
+          <input type="number" id="tarifa" value="0" min="0" step="10" inputmode="decimal">
+        </label>
+        <label>
+          <span class="lbl">Seguro R$</span>
+          <input type="number" id="seguro" value="0" min="0" step="10" inputmode="decimal">
+        </label>
+      </div>
+      <p class="hint">
+        As alíquotas mudam por decreto — confirme as vigentes com a área de
+        produtos antes de usar com cliente. O IOF diário incide sobre cada
+        amortização pelos dias até o vencimento, limitado a 365 dias.
+      </p>
+    </details>
+
+    <p class="erro" id="erro" hidden></p>
+  </div>
+
+  <!-- Antecipação: o número que ele veio buscar -->
+  <div class="card">
+    <div class="destaque">
+      <div class="destaque-val" id="antVal">—</div>
+      <div class="destaque-note" id="antNote"></div>
+    </div>
+    <div class="destaque">
+      <div class="destaque-val" id="quitVal">—</div>
+      <div class="destaque-note" id="quitNote"></div>
+    </div>
+  </div>
+
+  <!-- Resumo do contrato -->
+  <div class="card">
+    <div class="heroes">
+      <div class="hero">
+        <div class="hero-val" id="heroParcela">—</div>
+        <div class="hero-note" id="notaParcela">valor da parcela</div>
+      </div>
+      <div class="hero">
+        <div class="hero-val" id="heroLiberado">—</div>
+        <div class="hero-note">liberado ao cliente</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-v" id="stTotal">—</span>
+        <span class="stat-l">Total pago</span>
+      </div>
+      <div class="stat">
+        <span class="stat-v cost" id="stJuros">—</span>
+        <span class="stat-l">Total de juros</span>
+      </div>
+      <div class="stat">
+        <span class="stat-v cost" id="stCetM">—</span>
+        <span class="stat-l">CET a.m.</span>
+      </div>
+      <div class="stat">
+        <span class="stat-v cost" id="stCetA">—</span>
+        <span class="stat-l">CET a.a.</span>
+      </div>
+    </div>
+
+    <div class="encargos" id="encargos"></div>
+
+    <div class="chart-box">
+      <canvas id="grafico" aria-label="Composição de cada parcela entre juros e amortização" role="img"></canvas>
+      <div class="legend">
+        <span class="key"><span class="dot" style="background:var(--accent)"></span>Amortização</span>
+        <span class="key"><span class="dot" style="background:var(--cost)"></span>Juros</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="card">
+    <div class="t-head">
+      <h2>Parcela a parcela</h2>
+      <div class="seg" role="group" aria-label="Trecho da tabela">
+        <button type="button" id="btUltimas" aria-pressed="true">Últimas 6</button>
+        <button type="button" id="btTodas" aria-pressed="false">Todas</button>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Nº</th>
+            <th>Parcela</th>
+            <th class="hoje-h">Pagar hoje</th>
+            <th>Juros</th>
+            <th>Amortização</th>
+            <th>Saldo devedor</th>
+          </tr>
+        </thead>
+        <tbody id="corpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="note">
+    <strong>Antecipar dá direito a desconto dos juros.</strong>
+    O art. 52 §2º do Código de Defesa do Consumidor garante a redução
+    proporcional dos juros na quitação antecipada, e é isso que a coluna
+    "pagar hoje" calcula: o valor presente da parcela pela taxa do contrato.
+    O CET usa os encargos que você informar e assume parcelas de 30 dias —
+    o número oficial sai do sistema da operação.
+  </p>
+</div>
+
+<script>
+  const brl = new Intl.NumberFormat("pt-BR", {
+    style: "currency", currency: "BRL", minimumFractionDigits: 2
+  });
+
+  const el = (id) => document.getElementById(id);
+  const els = {
+    principal: el("principal"), lblPrincipal: el("lblPrincipal"),
+    taxa: el("taxa"), prazo: el("prazo"), pagas: el("pagas"),
+    iofDia: el("iofDia"), iofAdic: el("iofAdic"),
+    tarifa: el("tarifa"), seguro: el("seguro"),
+    derivado: el("derivado"), erro: el("erro"),
+    antVal: el("antVal"), antNote: el("antNote"),
+    quitVal: el("quitVal"), quitNote: el("quitNote"),
+    heroParcela: el("heroParcela"), notaParcela: el("notaParcela"),
+    heroLiberado: el("heroLiberado"),
+    stTotal: el("stTotal"), stJuros: el("stJuros"),
+    stCetM: el("stCetM"), stCetA: el("stCetA"),
+    encargos: el("encargos"), corpo: el("corpo"), canvas: el("grafico"),
+    btPrice: el("btPrice"), btSac: el("btSac")
+  };
+
+  let modo = "parcela";   // "parcela" | "valor"
+  let sistema = "price";
+  let trecho = "ultimas";
+  let linhas = [];
+
+  const pct = (v, casas = 2) =>
+    v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + "%";
+
+  /**
+   * Monta a tabela de amortização a partir do valor emprestado.
+   *
+   * Price: parcela fixa; a fatia de juros encolhe e a de amortização cresce.
+   * SAC:   amortização fixa; a parcela cai ao longo do contrato.
+   */
+  function calcular(pv, i, n) {
+    const out = [];
+    let saldo = pv;
+
+    // Sem juros a parcela é a divisão simples — a fórmula de Price divide
+    // por zero nesse caso.
+    const pmt = i === 0 ? pv / n : pv * i / (1 - Math.pow(1 + i, -n));
+    const amortFixa = pv / n;
+
+    for (let k = 1; k <= n; k++) {
+      const juros = saldo * i;
+      let amort, parcela;
+
+      if (sistema === "price") {
+        parcela = pmt;
+        amort = parcela - juros;
+      } else {
+        amort = amortFixa;
+        parcela = amort + juros;
+      }
+
+      saldo -= amort;
+      if (k === n) saldo = 0; // resíduo de arredondamento na última parcela
+
+      out.push({ k, parcela, juros, amort, saldo: Math.max(saldo, 0) });
+    }
+
+    return out;
+  }
+
+  /** Valor emprestado que corresponde a uma parcela conhecida (Price). */
+  function pvDaParcela(pmt, i, n) {
+    return i === 0 ? pmt * n : pmt * (1 - Math.pow(1 + i, -n)) / i;
+  }
+
+  /**
+   * IOF do crédito parcelado a pessoa física: a alíquota diária incide sobre
+   * cada parcela de amortização, contada da liberação até o vencimento e
+   * limitada a 365 dias. O adicional é fixo sobre o valor da operação.
+   */
+  function calcularIOF(linhas, pv, aliqDia, aliqAdic) {
+    let diario = 0;
+    for (const l of linhas) {
+      const dias = Math.min(l.k * 30, 365);
+      diario += l.amort * (aliqDia / 100) * dias;
+    }
+    return { diario, adicional: pv * (aliqAdic / 100) };
+  }
+
+  /**
+   * CET: a taxa que iguala o que o cliente recebeu na mão ao fluxo de
+   * parcelas que ele vai pagar. Resolvida por bisseção — o valor presente
+   * cai monotonicamente conforme a taxa sobe, então a busca sempre converge.
+   */
+  function cetMensal(liquido, parcelas) {
+    if (!(liquido > 0) || !parcelas.length) return null;
+
+    const vp = (r) =>
+      parcelas.reduce((s, p, idx) => s + p / Math.pow(1 + r, idx + 1), 0);
+
+    let lo = 0, hi = 1;
+    if (vp(lo) < liquido) return null;
+    while (vp(hi) > liquido && hi < 100) hi *= 2;
+
+    for (let k = 0; k < 200; k++) {
+      const meio = (lo + hi) / 2;
+      if (vp(meio) > liquido) lo = meio; else hi = meio;
+    }
+    return (lo + hi) / 2;
+  }
+
+  function desenhar(linhas) {
+    const c = els.canvas;
+    const dpr = window.devicePixelRatio || 1;
+    const w = c.clientWidth, h = c.clientHeight;
+    if (!w) return;
+    c.width = w * dpr;
+    c.height = h * dpr;
+
+    const ctx = c.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    if (!linhas.length) return;
+
+    const css = getComputedStyle(document.documentElement);
+    const corAmort = css.getPropertyValue("--accent").trim();
+    const corJuros = css.getPropertyValue("--cost").trim();
+    const corLinha = css.getPropertyValue("--line").trim();
+
+    const topo = Math.max(...linhas.map(l => l.parcela));
+    const n = linhas.length;
+    const larg = w / n;
+    const y = (v) => h - (v / topo) * (h - 6);
+
+    ctx.strokeStyle = corLinha;
+    ctx.lineWidth = 1;
+    for (const f of [0.25, 0.5, 0.75]) {
+      const gy = Math.round(h - f * (h - 6)) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(w, gy);
+      ctx.stroke();
+    }
+
+    const vao = n > 90 ? 0 : Math.min(1.5, larg * 0.16);
+    linhas.forEach((l, idx) => {
+      const x = idx * larg;
+      const bw = Math.max(larg - vao, 0.7);
+
+      ctx.fillStyle = corAmort;
+      ctx.fillRect(x, y(l.amort), bw, h - y(l.amort));
+
+      ctx.fillStyle = corJuros;
+      ctx.fillRect(x, y(l.parcela), bw, y(l.amort) - y(l.parcela));
+    });
+  }
+
+  const num = (campo) => {
+    const v = parseFloat(campo.value);
+    return Number.isFinite(v) && v >= 0 ? v : 0;
+  };
+
+  function render() {
+    const entrada = parseFloat(els.principal.value);
+    const taxaPct = parseFloat(els.taxa.value);
+    const n = parseInt(els.prazo.value, 10);
+    const i = taxaPct / 100;
+
+    let erro = "";
+    if (!(entrada > 0)) erro = "Informe um valor maior que zero.";
+    else if (!(taxaPct >= 0)) erro = "A taxa de juros não pode ser negativa.";
+    else if (!(n >= 1)) erro = "O prazo precisa ser de ao menos uma parcela.";
+    else if (n > 600) erro = "O prazo máximo desta simulação é 600 parcelas.";
+
+    els.erro.hidden = !erro;
+    els.erro.textContent = erro;
+    if (erro) return;
+
+    const pv = modo === "valor" ? entrada : pvDaParcela(entrada, i, n);
+    linhas = calcular(pv, i, n);
+
+    // quantas parcelas já saíram — o resto é o que dá para antecipar
+    let pagas = parseInt(els.pagas.value, 10);
+    if (!Number.isFinite(pagas) || pagas < 0) pagas = 0;
+    if (pagas > n - 1) pagas = n - 1;
+
+    els.derivado.innerHTML = modo === "valor"
+      ? `Parcela calculada: <b>${brl.format(linhas[0].parcela)}</b>`
+      : `Valor emprestado equivalente: <b>${brl.format(pv)}</b>`;
+
+    // ---- antecipação: valor presente de cada parcela que falta ----
+    const restantes = linhas.filter(l => l.k > pagas);
+    const hoje = (l) => l.parcela / Math.pow(1 + i, l.k - pagas);
+
+    const ultima = linhas[n - 1];
+    const vUltima = hoje(ultima);
+    els.antVal.textContent = brl.format(vUltima);
+    els.antNote.innerHTML =
+      `<b>${n}ª parcela</b> paga hoje · vence em ${n - pagas} ${n - pagas === 1 ? "mês" : "meses"} · ` +
+      `desconto de ${brl.format(ultima.parcela - vUltima)}`;
+
+    const totalQuitar = restantes.reduce((s, l) => s + hoje(l), 0);
+    const faceRestante = restantes.reduce((s, l) => s + l.parcela, 0);
+    els.quitVal.textContent = brl.format(totalQuitar);
+    els.quitNote.innerHTML =
+      `<b>quitar tudo hoje</b> · ${restantes.length} ${restantes.length === 1 ? "parcela" : "parcelas"} ` +
+      `de face ${brl.format(faceRestante)} · economia de ${brl.format(faceRestante - totalQuitar)}`;
+
+    // ---- resumo do contrato ----
+    const totalPago = linhas.reduce((s, l) => s + l.parcela, 0);
+    const totalJuros = linhas.reduce((s, l) => s + l.juros, 0);
+
+    const iof = calcularIOF(linhas, pv, num(els.iofDia), num(els.iofAdic));
+    const tarifa = num(els.tarifa);
+    const seguro = num(els.seguro);
+    const encargos = iof.diario + iof.adicional + tarifa + seguro;
+    const liberado = pv - encargos;
+
+    els.heroParcela.textContent = brl.format(linhas[0].parcela);
+    els.notaParcela.textContent = sistema === "price"
+      ? `${n} parcelas fixas`
+      : `1ª · última cai a ${brl.format(linhas[n - 1].parcela)}`;
+
+    els.heroLiberado.textContent = brl.format(Math.max(liberado, 0));
+    els.stTotal.textContent = brl.format(totalPago);
+    els.stJuros.textContent = brl.format(totalJuros);
+
+    const r = cetMensal(liberado, linhas.map(l => l.parcela));
+    els.stCetM.textContent = r === null ? "—" : pct(r * 100);
+    els.stCetA.textContent = r === null ? "—" : pct((Math.pow(1 + r, 12) - 1) * 100, 1);
+
+    const itens = [
+      ["IOF diário", iof.diario],
+      ["IOF adicional", iof.adicional],
+      ["Tarifa de cadastro", tarifa],
+      ["Seguro", seguro]
+    ].filter(([, v]) => v > 0);
+
+    els.encargos.innerHTML = itens.length
+      ? itens.map(([rot, v]) =>
+          `<div class="enc-linha"><span>${rot}</span><span>${brl.format(v)}</span></div>`
+        ).join("") +
+        `<div class="enc-linha soma"><span>Encargos descontados</span><span>${brl.format(encargos)}</span></div>`
+      : "";
+
+    // ---- tabela ----
+    const mostrar = trecho === "ultimas" ? linhas.slice(-6) : linhas;
+    els.corpo.innerHTML = mostrar.map(l => {
+      const paga = l.k <= pagas;
+      const classe = paga ? "paga" : (l.k === n ? "final" : "");
+      return `
+      <tr class="${classe}">
+        <td class="n">${l.k}</td>
+        <td>${brl.format(l.parcela)}</td>
+        <td class="hoje">${paga ? "paga" : brl.format(hoje(l))}</td>
+        <td class="juros">${brl.format(l.juros)}</td>
+        <td class="amort">${brl.format(l.amort)}</td>
+        <td class="saldo">${brl.format(l.saldo)}</td>
+      </tr>`;
+    }).join("");
+
+    desenhar(linhas);
+  }
+
+  function par(botaoA, botaoB, aoTrocar) {
+    botaoA.addEventListener("click", () => {
+      if (botaoA.disabled) return;
+      botaoA.setAttribute("aria-pressed", "true");
+      botaoB.setAttribute("aria-pressed", "false");
+      aoTrocar(true);
+      render();
+    });
+    botaoB.addEventListener("click", () => {
+      if (botaoB.disabled) return;
+      botaoB.setAttribute("aria-pressed", "true");
+      botaoA.setAttribute("aria-pressed", "false");
+      aoTrocar(false);
+      render();
+    });
+  }
+
+  par(el("btPorParcela"), el("btPorValor"), (ehA) => {
+    modo = ehA ? "parcela" : "valor";
+    els.lblPrincipal.textContent = ehA ? "Valor da parcela" : "Valor emprestado";
+    // partir da parcela só faz sentido no Price, onde ela é fixa
+    els.btSac.disabled = ehA;
+    if (ehA && sistema === "sac") {
+      sistema = "price";
+      els.btPrice.setAttribute("aria-pressed", "true");
+      els.btSac.setAttribute("aria-pressed", "false");
+    }
+  });
+
+  par(els.btPrice, els.btSac, (ehA) => { sistema = ehA ? "price" : "sac"; });
+  par(el("btUltimas"), el("btTodas"), (ehA) => { trecho = ehA ? "ultimas" : "todas"; });
+
+  for (const campo of [els.principal, els.taxa, els.prazo, els.pagas,
+                       els.iofDia, els.iofAdic, els.tarifa, els.seguro]) {
+    campo.addEventListener("input", render);
+  }
+
+  window.addEventListener("resize", () => desenhar(linhas));
+  matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", () => desenhar(linhas));
+  new MutationObserver(() => desenhar(linhas))
+    .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  els.btSac.disabled = true; // começa em "sei a parcela"
+  render();
+</script>
