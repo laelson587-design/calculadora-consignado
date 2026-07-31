@@ -494,7 +494,14 @@
 
     <details>
       <summary>Encargos e tarifas</summary>
-      <div class="grid-2">
+
+      <div class="seg" role="group" aria-label="Como os encargos entram">
+        <button type="button" id="btCheio" aria-pressed="true">Cliente recebe cheio</button>
+        <button type="button" id="btDescontado" aria-pressed="false">Descontados</button>
+      </div>
+      <p class="hint" id="dicaModelo"></p>
+
+      <div class="grid-2" id="camposEncargos" hidden>
         <label>
           <span class="lbl">IOF diário % a.d.</span>
           <input type="number" id="iofDia" value="0.0082" min="0" step="0.0001" inputmode="decimal">
@@ -512,7 +519,7 @@
           <input type="number" id="seguro" value="0" min="0" step="10" inputmode="decimal">
         </label>
       </div>
-      <p class="hint">
+      <p class="hint" id="dicaIOF" hidden>
         As alíquotas mudam por decreto — confirme as vigentes com a área de
         produtos antes de usar com cliente. O IOF diário incide sobre cada
         amortização pelos dias até o vencimento, limitado a 365 dias.
@@ -639,10 +646,21 @@
     stTotal: el("stTotal"), stJuros: el("stJuros"),
     stCetM: el("stCetM"), stCetA: el("stCetA"),
     encargos: el("encargos"), corpo: el("corpo"), canvas: el("grafico"),
-    btPrice: el("btPrice"), btSac: el("btSac")
+    btPrice: el("btPrice"), btSac: el("btSac"),
+    camposEncargos: el("camposEncargos"), dicaModelo: el("dicaModelo"),
+    dicaIOF: el("dicaIOF")
   };
 
   let modo = "parcela";   // "parcela" | "valor"
+  /**
+   * Como os encargos entram na operação — os dois modelos existem no mercado:
+   *
+   * false (padrão): o cliente recebe o valor cheio. Pegou mil, recebe mil.
+   *                 Os encargos estão embutidos na taxa, não saem da liberação.
+   * true:           IOF e tarifas são descontados no ato, então o cliente
+   *                 recebe menos do que a dívida sobre a qual paga juros.
+   */
+  let encargosDescontados = false;
   let sistema = "price";
   let trecho = "ultimas";
   let linhas = [];
@@ -828,9 +846,13 @@
     const totalPago = linhas.reduce((s, l) => s + l.parcela, 0);
     const totalJuros = linhas.reduce((s, l) => s + l.juros, 0);
 
-    const iof = calcularIOF(linhas, pv, num(els.iofDia), num(els.iofAdic));
-    const tarifa = num(els.tarifa);
-    const seguro = num(els.seguro);
+    // Quando o cliente recebe o valor cheio, nada é abatido da liberação: a
+    // dívida e o dinheiro na mão são o mesmo número, e o CET recai na taxa.
+    const iof = encargosDescontados
+      ? calcularIOF(linhas, pv, num(els.iofDia), num(els.iofAdic))
+      : { diario: 0, adicional: 0 };
+    const tarifa = encargosDescontados ? num(els.tarifa) : 0;
+    const seguro = encargosDescontados ? num(els.seguro) : 0;
     const encargos = iof.diario + iof.adicional + tarifa + seguro;
     const liberado = pv - encargos;
 
@@ -910,6 +932,15 @@
   });
 
   par(els.btPrice, els.btSac, (ehA) => { sistema = ehA ? "price" : "sac"; });
+
+  par(el("btCheio"), el("btDescontado"), (ehA) => {
+    encargosDescontados = !ehA;
+    els.camposEncargos.hidden = ehA;
+    els.dicaIOF.hidden = ehA;
+    els.dicaModelo.textContent = ehA
+      ? "Pegou mil, recebe mil. O que ele deve e o que recebe são o mesmo valor, e o CET fica igual à taxa do contrato."
+      : "IOF e tarifas saem no ato da liberação: o cliente recebe menos do que a dívida sobre a qual paga juros, e o CET sobe acima da taxa.";
+  });
   par(el("btUltimas"), el("btTodas"), (ehA) => { trecho = ehA ? "ultimas" : "todas"; });
 
   for (const campo of [els.principal, els.taxa, els.prazo, els.pagas,
@@ -924,6 +955,8 @@
     .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   els.btSac.disabled = true; // começa em "sei a parcela"
+  els.dicaModelo.textContent =
+    "Pegou mil, recebe mil. O que ele deve e o que recebe são o mesmo valor, e o CET fica igual à taxa do contrato.";
   render();
 </script>
 
