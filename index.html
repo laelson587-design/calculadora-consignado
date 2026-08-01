@@ -452,16 +452,20 @@
         <input type="number" id="prazo" value="15" min="1" max="600" step="1" inputmode="numeric">
       </label>
       <label>
-        <span class="lbl">Parcelas já pagas</span>
-        <input type="number" id="pagas" value="0" min="0" step="1" inputmode="numeric">
-      </label>
-      <label>
         <span class="lbl">Dias até a 1ª parcela</span>
         <input type="number" id="carencia" value="40" min="1" max="180" step="1" inputmode="numeric">
       </label>
       <label>
         <span class="lbl">IOF % do financiado</span>
         <input type="number" id="iofPct" value="1.714" min="0" max="10" step="0.001" inputmode="decimal">
+      </label>
+      <label>
+        <span class="lbl">TCC em R$</span>
+        <input type="number" id="tcc" value="0" min="0" step="10" inputmode="decimal">
+      </label>
+      <label>
+        <span class="lbl">Parcelas já pagas</span>
+        <input type="number" id="pagas" value="0" min="0" step="1" inputmode="numeric">
       </label>
     </div>
 
@@ -482,6 +486,13 @@
         calculadas fica maior que o dinheiro recebido. O percentual varia com
         o prazo e com a alíquota vigente; confira no demonstrativo de CET do
         contrato e ajuste aqui.
+      </p>
+      <p class="hint">
+        <b>TCC em R$</b> — a Tarifa de Confecção de Cadastro entra por cima
+        junto com o IOF e sai no demonstrativo como valor fixo, não como
+        percentual: copie o número da linha <i>d2) TCC</i>. Ela pode pesar
+        muito mais que o IOF — num contrato de mil reais, R$ 130 de TCC contra
+        R$ 15 de IOF. Deixe zero quando o contrato não cobrar.
       </p>
     </details>
   </div>
@@ -579,11 +590,11 @@
 
   <p class="note">
     <strong>O CET aqui é aproximado.</strong>
-    Confrontado com um contrato real, esta conta reproduziu exatamente a
-    parcela, o valor financiado e o total a pagar, mas o CET saiu cerca de
-    0,05 ponto abaixo do oficial — a fórmula do Banco Central tem convenções
-    próprias de contagem de dias. Use como conferência, não como número de
-    contrato.
+    Confrontada com dois contratos reais — um de carência longa, outro curta,
+    um sem TCC e outro com — esta conta reproduziu ao centavo a parcela, o
+    valor financiado e o total a pagar, mas o CET sai de 0,05 a 0,1 ponto
+    abaixo do oficial: a fórmula do Banco Central tem convenções próprias de
+    contagem de dias. Use como conferência, não como número de contrato.
   </p>
 </div>
 
@@ -596,7 +607,7 @@
   const els = {
     principal: el("principal"), lblPrincipal: el("lblPrincipal"),
     taxa: el("taxa"), prazo: el("prazo"), pagas: el("pagas"),
-    carencia: el("carencia"), iofPct: el("iofPct"),
+    carencia: el("carencia"), iofPct: el("iofPct"), tcc: el("tcc"),
     derivado: el("derivado"), erro: el("erro"),
     quitVal: el("quitVal"), quitNote: el("quitNote"),
     antVal: el("antVal"), antNote: el("antNote"),
@@ -718,6 +729,7 @@
     const n = parseInt(els.prazo.value, 10);
     const carencia = parseInt(els.carencia.value, 10);
     const iofPct = parseFloat(els.iofPct.value);
+    const tcc = parseFloat(els.tcc.value);
     const i = taxaPct / 100;
 
     let erro = "";
@@ -727,6 +739,7 @@
     else if (n > 600) erro = "O prazo máximo desta simulação é 600 parcelas.";
     else if (!(carencia >= 1)) erro = "Informe quantos dias faltam para a 1ª parcela.";
     else if (!(iofPct >= 0 && iofPct < 100)) erro = "O IOF precisa ser um percentual válido.";
+    else if (!(tcc >= 0)) erro = "O TCC não pode ser negativo.";
 
     els.erro.hidden = !erro;
     els.erro.textContent = erro;
@@ -735,21 +748,29 @@
     const t = instantes(n, carencia);
     const fator = fatorVP(t, i);
 
-    // O IOF incide sobre o financiado, que por sua vez é o solicitado mais o
-    // próprio IOF — daí a divisão, que resolve a circularidade de uma vez.
+    // IOF e TCC são somados por cima do que o cliente recebe. O TCC é valor
+    // fixo, lido do contrato; o IOF é percentual do próprio financiado, que
+    // já inclui os dois — daí a divisão, que resolve a circularidade.
     let solicitado, financiado, pmt;
     if (modo === "valor") {
       solicitado = entrada;
-      financiado = solicitado / (1 - iofPct / 100);
+      financiado = (solicitado + tcc) / (1 - iofPct / 100);
       // arredonda para centavos: é a parcela que o cliente paga de fato, e
       // sem isso o total diverge alguns centavos do contrato
       pmt = Math.round((financiado / fator) * 100) / 100;
     } else {
       pmt = entrada;
       financiado = pmt * fator;
-      solicitado = financiado * (1 - iofPct / 100);
+      solicitado = financiado * (1 - iofPct / 100) - tcc;
+      if (!(solicitado > 0)) {
+        els.erro.hidden = false;
+        els.erro.textContent =
+          "Os encargos consomem a operação inteira: com esta parcela, o TCC " +
+          "informado não deixa valor a liberar.";
+        return;
+      }
     }
-    const iof = financiado - solicitado;
+    const iof = financiado * (iofPct / 100);
 
     linhas = calcular(financiado, i, t, pmt);
 
@@ -808,7 +829,8 @@
 
     els.encargos.innerHTML = [
       ["Valor liberado ao cliente", brl.format(solicitado)],
-      ["IOF somado por cima", brl.format(iof)]
+      ["IOF somado por cima", brl.format(iof)],
+      ...(tcc > 0 ? [["TCC somado por cima", brl.format(tcc)]] : [])
     ].map(([rot, v]) =>
       `<div class="enc-linha"><span>${rot}</span><span>${v}</span></div>`
     ).join("") +
@@ -856,7 +878,7 @@
   par(el("btUltimas"), el("btTodas"), (ehA) => { trecho = ehA ? "ultimas" : "todas"; });
 
   for (const campo of [els.principal, els.taxa, els.prazo, els.pagas,
-                       els.carencia, els.iofPct]) {
+                       els.carencia, els.iofPct, els.tcc]) {
     campo.addEventListener("input", render);
   }
 

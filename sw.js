@@ -8,7 +8,7 @@
  *
  * Ao mexer nos arquivos, suba a versão: é o que descarta o cache antigo.
  */
-const VERSAO = "calc-v1";
+const VERSAO = "calc-v2";
 
 const ESSENCIAIS = [
   "./",
