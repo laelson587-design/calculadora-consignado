@@ -18,68 +18,17 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Antecipação">
 
-<!-- A barra de status do sistema assume a cor do fundo, nos dois temas. -->
-<meta name="theme-color" content="#f4f6f3" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0c1412" media="(prefers-color-scheme: dark)">
+<!-- A barra de status do sistema assume a cor do fundo. -->
+<meta name="theme-color" content="#0c1412">
 
 <style>
-  /* ---------- Tokens: tema claro (padrão) ----------
-     Neutros com viés esverdeado, como papel de segurança e tinta de razão
-     contábil. O acento é o verde-petróleo da amortização; a terracota
+  /* ---------- Tokens ----------
+     Escuro sempre, independente do ajuste do aparelho: é o tom em que a
+     ferramenta é usada, e trocar de cor conforme o celular do momento
+     atrapalha quem já sabe onde cada número fica. Neutros com viés
+     esverdeado; o acento é o verde-petróleo da amortização e a terracota
      marca custo. Cada cor tem um papel e não disputa com a outra. */
   :root {
-    --paper:    #f4f6f3;
-    --surface:  #ffffff;
-    --sunken:   #eef1ed;
-    --ink:      #14201d;
-    --ink-2:    #5c6d67;
-    --ink-3:    #8a9994;
-    --line:     #dce2df;
-    --line-2:   #c6d0cc;
-    --accent:   #0d6355;
-    --accent-w: #0d635518;
-    --cost:     #9c4028;
-    --cost-w:   #9c402818;
-    --focus:    #0d6355;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --paper:    #0c1412;
-      --surface:  #141e1b;
-      --sunken:   #101917;
-      --ink:      #e9eeea;
-      --ink-2:    #94a49e;
-      --ink-3:    #6b7b76;
-      --line:     #24322e;
-      --line-2:   #32433e;
-      --accent:   #46b8a0;
-      --accent-w: #46b8a022;
-      --cost:     #dd8161;
-      --cost-w:   #dd816122;
-      --focus:    #46b8a0;
-    }
-  }
-
-  /* O botão de tema do visualizador carimba data-theme na raiz e precisa
-     vencer o media query nos dois sentidos. */
-  :root[data-theme="light"] {
-    --paper:    #f4f6f3;
-    --surface:  #ffffff;
-    --sunken:   #eef1ed;
-    --ink:      #14201d;
-    --ink-2:    #5c6d67;
-    --ink-3:    #8a9994;
-    --line:     #dce2df;
-    --line-2:   #c6d0cc;
-    --accent:   #0d6355;
-    --accent-w: #0d635518;
-    --cost:     #9c4028;
-    --cost-w:   #9c402818;
-    --focus:    #0d6355;
-  }
-
-  :root[data-theme="dark"] {
     --paper:    #0c1412;
     --surface:  #141e1b;
     --sunken:   #101917;
@@ -93,6 +42,11 @@
     --cost:     #dd8161;
     --cost-w:   #dd816122;
     --focus:    #46b8a0;
+
+    /* Sem isto o sistema desenha o teclado numérico, o cursor e as setinhas
+       do campo de número no claro quando o aparelho está no tema claro —
+       teclado branco sobre página preta. */
+    color-scheme: dark;
   }
 
   :root {
@@ -882,11 +836,8 @@
     campo.addEventListener("input", render);
   }
 
+  // O gráfico é bitmap: não reflui sozinho quando a largura muda.
   window.addEventListener("resize", () => desenhar(linhas));
-  matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", () => desenhar(linhas));
-  new MutationObserver(() => desenhar(linhas))
-    .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   render();
 
