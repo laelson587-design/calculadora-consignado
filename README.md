@@ -33,10 +33,22 @@ vários por cento — para menos numa carência longa, para mais numa curta.
 
 **IOF e TCC somados por cima.** O cliente recebe o valor solicitado; os encargos
 formam uma dívida maior, e é sobre ela que as parcelas são calculadas. O TCC é
-valor fixo lido do contrato; o IOF é percentual do próprio financiado, que já
-inclui os dois: `financiado = (solicitado + TCC) / (1 − IOF%)`. O IOF entra como
-campo porque as alíquotas padrão não reproduzem o valor do demonstrativo — leia
-o percentual da linha `d1)` e o TCC da linha `d2)`.
+valor fixo; o IOF é percentual do próprio financiado, que já inclui os dois:
+`financiado = (solicitado + TCC) / (1 − IOF%)`.
+
+**Os dois encargos se preenchem sozinhos**, que é o que permite simular antes de
+o contrato existir. O IOF sai do prazo: a estrutura é a da lei — parte fixa mais
+parte diária — mas o prazo que a instituição usa não é o da amortização, então
+os dias efetivos vêm de uma reta ajustada aos contratos reais. Aplicar a regra
+padrão sobre a tabela Price daria quase o dobro. O TCC sai do botão de cadastro,
+não de uma conta: ele não depende do valor nem do prazo, e sim de ser ou não o
+primeiro contrato do cliente (cláusula II.6). Os dois campos aceitam o valor do
+demonstrativo por cima, nas linhas `d1)` e `d2)`.
+
+A folga entre os dois é grande: em toda a faixa plausível o IOF move menos de
+R$ 2 na parcela, e o TCC move R$ 30. Por isso o IOF pode ser estimado e a tarifa
+não — na dúvida, cote como cliente novo, que erra para cima e a parcela real
+chega menor do que a prometida.
 
 **Liquidação não é antecipação de parcela.** Antecipar uma parcela avulsa é
 valor presente puro pela taxa pactuada (cláusula VII.5). Já na quitação do
@@ -56,8 +68,13 @@ Conferida contra dois demonstrativos de CET reais, de perfis opostos:
 | IOF | 1,714% | 1,32% |
 | TCC | — | R$ 130,00 |
 
-Nos dois, o modelo reproduz **ao centavo** a parcela, o valor financiado e o
-total a pagar.
+Informando IOF e TCC, o modelo reproduz **ao centavo** a parcela, o valor
+financiado e o total a pagar. Simulando — sem nada do demonstrativo, só valor,
+prazo, dias e o botão de cadastro — as parcelas saem a **um centavo** das reais:
+R$ 260,01 e R$ 633,48.
+
+O prazo vai até 18, que é o teto do produto. Fora dessa faixa a estimativa do
+IOF não foi observada.
 
 ## Limites conhecidos
 
@@ -68,9 +85,13 @@ total a pagar.
   próprias da instituição — se aceita antecipar parcela avulsa ou só quitação
   total — não estão contempladas.
 
-Se os números divergirem do sistema, as suspeitas nessa ordem: **encargo não
-modelado** (foi o que explicou a última divergência: um TCC de R$ 130), dias até
-a 1ª parcela, percentual de IOF diferente do padrão.
+- A regra da tarifa — cobrada no cadastro novo — está **apoiada em dois
+  contratos**, um com e outro sem. Explica os dois e é o que a cláusula II.6
+  descreve, mas ainda não foi confirmada em um terceiro.
+
+Se os números divergirem do sistema, as suspeitas nessa ordem: **tarifa** (é o
+único encargo que move mais de R$ 1 na parcela), dias até a 1ª parcela,
+percentual de IOF.
 
 ## Publicando uma alteração
 

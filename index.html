@@ -414,6 +414,11 @@
       <button type="button" id="btPorParcela" aria-pressed="false">Sei a parcela</button>
     </div>
 
+    <div class="seg" role="group" aria-label="Relação do cliente com a casa">
+      <button type="button" id="btNovo" aria-pressed="true">Cliente novo</button>
+      <button type="button" id="btAntigo" aria-pressed="false">Já é cliente</button>
+    </div>
+
     <div class="grid-2">
       <label>
         <span class="lbl" id="lblPrincipal">Valor solicitado</span>
@@ -472,11 +477,20 @@
         parcela.
       </p>
       <p class="hint">
-        <b>TCC em R$</b> — a Tarifa de Confecção de Cadastro entra por cima
-        junto com o IOF e sai no demonstrativo como valor fixo, não como
-        percentual: copie o número da linha <i>d2) TCC</i>. Ela pode pesar
-        muito mais que o IOF — num contrato de mil reais, R$ 130 de TCC contra
-        R$ 15 de IOF. Deixe zero quando o contrato não cobrar.
+        <b>Cliente novo / já é cliente</b> — a Tarifa de Confecção de Cadastro
+        é cobrada uma vez, quando o cliente entra na casa (cláusula II.6), e
+        não depende do valor nem do prazo: num contrato de R$ 1.004,90 ela foi
+        de R$ 130, e num de R$ 3.000 não houve. O botão põe ou tira a tarifa;
+        o campo abaixo aceita outro valor por cima. Cotar como cliente novo é
+        o lado seguro — se a tarifa não vier, a parcela chega menor do que foi
+        prometido.
+      </p>
+      <p class="hint">
+        <b>TCC em R$</b> — entra por cima junto com o IOF e sai no
+        demonstrativo como valor fixo, não como percentual: a linha
+        <i>d2) TCC</i>. Pesa muito mais que o IOF — num contrato de mil reais,
+        R$ 130 de tarifa contra R$ 15 de imposto, e é o único campo em que
+        errar custa mais de R$ 1 na parcela.
       </p>
     </details>
   </div>
@@ -603,11 +617,24 @@
     encargos: el("encargos"), corpo: el("corpo"), canvas: el("grafico")
   };
 
+  /**
+   * Tarifa de Confecção de Cadastro observada em contrato.
+   *
+   * Ela não sai do valor nem do prazo — dois contratos mostraram o oposto do
+   * que uma tabela por faixa faria: o empréstimo de R$ 1.004,90 pagou R$ 130
+   * e o de R$ 3.000 não pagou nada. O que explica os dois é a cláusula II.6,
+   * que cobra a tarifa por início de relacionamento: uma vez, no cadastro
+   * novo. Daí o botão em vez de um campo calculado.
+   */
+  const TARIFA_CADASTRO = 130;
+
   let modo = "valor";   // "valor" = sei o solicitado | "parcela" = sei a prestação
   let trecho = "ultimas";
   let linhas = [];
-  // Enquanto o IOF não for digitado à mão, ele acompanha o prazo sozinho.
+  // Enquanto não forem digitados à mão, IOF e TCC se preenchem sozinhos.
   let iofManual = false;
+  let tccManual = false;
+  let clienteNovo = true;   // padrão é a cotação mais alta, que é a segura
 
   const pct = (v, casas = 2) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + "%";
@@ -742,6 +769,9 @@
     }
     els.iofTexto.textContent = iofManual ? "informado" : "estimado pelo prazo";
     els.iofVoltar.hidden = !iofManual;
+
+    // A tarifa segue o botão de cadastro, não uma conta.
+    if (!tccManual) els.tcc.value = clienteNovo ? TARIFA_CADASTRO : 0;
 
     const iofPct = parseFloat(els.iofPct.value);
     const tcc = parseFloat(els.tcc.value);
@@ -902,6 +932,13 @@
     els.lblPrincipal.textContent = ehA ? "Valor solicitado" : "Valor da parcela";
   });
 
+  // Tocar no botão é pedir a regra de volta, mesmo que a tarifa tenha sido
+  // digitada à mão antes.
+  par(el("btNovo"), el("btAntigo"), (ehA) => {
+    clienteNovo = ehA;
+    tccManual = false;
+  });
+
   par(el("btUltimas"), el("btTodas"), (ehA) => { trecho = ehA ? "ultimas" : "todas"; });
 
   // Antes do render: digitar no campo desliga a estimativa, e quem tem o
@@ -910,6 +947,7 @@
   // Atribuir .value por código não dispara "input", então o preenchimento
   // automático não se confunde com edição.
   els.iofPct.addEventListener("input", () => { iofManual = true; });
+  els.tcc.addEventListener("input", () => { tccManual = true; });
 
   for (const campo of [els.principal, els.taxa, els.prazo, els.pagas,
                        els.carencia, els.iofPct, els.tcc]) {
