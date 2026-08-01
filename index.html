@@ -146,6 +146,28 @@
     outline-offset: 2px;
   }
 
+  /* Nota sob um campo: diz de onde veio o número, ou o que ele custa. */
+  .auto {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-height: 15px;
+    font-size: 10.5px;
+    line-height: 1.4;
+    color: var(--ink-3);
+  }
+
+  .auto button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
   .derivado {
     margin: 0;
     font-family: var(--num);
@@ -403,7 +425,7 @@
       </label>
       <label>
         <span class="lbl">Prazo (parcelas)</span>
-        <input type="number" id="prazo" value="15" min="1" max="600" step="1" inputmode="numeric">
+        <input type="number" id="prazo" value="15" min="1" max="18" step="1" inputmode="numeric">
       </label>
       <label>
         <span class="lbl">Dias até a 1ª parcela</span>
@@ -412,10 +434,15 @@
       <label>
         <span class="lbl">IOF % do financiado</span>
         <input type="number" id="iofPct" value="1.714" min="0" max="10" step="0.001" inputmode="decimal">
+        <span class="auto">
+          <span id="iofTexto"></span>
+          <button type="button" id="iofVoltar" hidden>estimar pelo prazo</button>
+        </span>
       </label>
       <label>
         <span class="lbl">TCC em R$</span>
         <input type="number" id="tcc" value="0" min="0" step="10" inputmode="decimal">
+        <span class="auto"><span id="tccTexto"></span></span>
       </label>
       <label>
         <span class="lbl">Parcelas já pagas</span>
@@ -437,9 +464,12 @@
       <p class="hint">
         <b>IOF % do financiado</b> — o cliente recebe o valor solicitado, e o
         IOF é somado por cima: a dívida sobre a qual as parcelas são
-        calculadas fica maior que o dinheiro recebido. O percentual varia com
-        o prazo e com a alíquota vigente; confira no demonstrativo de CET do
-        contrato e ajuste aqui.
+        calculadas fica maior que o dinheiro recebido. O campo se preenche
+        sozinho a partir do prazo, por uma reta ajustada a dois contratos
+        reais — é o que permite simular antes de o contrato existir. Digitar
+        por cima assume o comando; o link devolve a estimativa. A folga é
+        confortável: em toda a faixa plausível, o IOF move menos de R$ 2 na
+        parcela.
       </p>
       <p class="hint">
         <b>TCC em R$</b> — a Tarifa de Confecção de Cadastro entra por cima
@@ -562,6 +592,7 @@
     principal: el("principal"), lblPrincipal: el("lblPrincipal"),
     taxa: el("taxa"), prazo: el("prazo"), pagas: el("pagas"),
     carencia: el("carencia"), iofPct: el("iofPct"), tcc: el("tcc"),
+    iofTexto: el("iofTexto"), iofVoltar: el("iofVoltar"), tccTexto: el("tccTexto"),
     derivado: el("derivado"), erro: el("erro"),
     quitVal: el("quitVal"), quitNote: el("quitNote"),
     antVal: el("antVal"), antNote: el("antNote"),
@@ -575,6 +606,8 @@
   let modo = "valor";   // "valor" = sei o solicitado | "parcela" = sei a prestação
   let trecho = "ultimas";
   let linhas = [];
+  // Enquanto o IOF não for digitado à mão, ele acompanha o prazo sozinho.
+  let iofManual = false;
 
   const pct = (v, casas = 2) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + "%";
@@ -593,6 +626,25 @@
 
   /** Fator de valor presente de uma série de 1 real nos instantes dados. */
   const fatorVP = (t, i) => t.reduce((s, x) => s + 1 / Math.pow(1 + i, x), 0);
+
+  /**
+   * IOF estimado, para simular antes de o contrato existir.
+   *
+   * A estrutura é a da lei — uma parcela fixa mais uma diária sobre o prazo —
+   * mas o prazo que a instituição usa não é o da amortização: aplicar a regra
+   * padrão sobre a tabela Price dá quase o dobro do IOF que os contratos
+   * mostram. Então os dias efetivos vêm de reta ajustada a dois contratos
+   * reais (9x/25 dias e 15x/40 dias), que ela reproduz com erro de centavos.
+   *
+   * É estimativa, não fórmula oficial: vale enquanto o prazo estiver na faixa
+   * observada. Errar o IOF em toda a faixa plausível move menos de R$ 2 na
+   * parcela — o campo continua editável para receber o valor do contrato.
+   */
+  function iofEstimado(n, carenciaDias) {
+    const dias = carenciaDias + 40.9 + 5.68 * n;
+    const sobreOPrincipal = 0.0038 + 0.000082 * dias;
+    return (sobreOPrincipal / (1 + sobreOPrincipal)) * 100;
+  }
 
   /**
    * Tabela de amortização. O juro de cada período é o saldo corrigido pelo
@@ -682,6 +734,15 @@
     const taxaPct = parseFloat(els.taxa.value);
     const n = parseInt(els.prazo.value, 10);
     const carencia = parseInt(els.carencia.value, 10);
+
+    // O IOF se preenche a partir do prazo, para a simulação não exigir um
+    // número que só o contrato pronto traz.
+    if (!iofManual && n >= 1 && n <= 18 && carencia >= 1) {
+      els.iofPct.value = iofEstimado(n, carencia).toFixed(3);
+    }
+    els.iofTexto.textContent = iofManual ? "informado" : "estimado pelo prazo";
+    els.iofVoltar.hidden = !iofManual;
+
     const iofPct = parseFloat(els.iofPct.value);
     const tcc = parseFloat(els.tcc.value);
     const i = taxaPct / 100;
@@ -690,14 +751,14 @@
     if (!(entrada > 0)) erro = "Informe um valor maior que zero.";
     else if (!(taxaPct >= 0)) erro = "A taxa de juros não pode ser negativa.";
     else if (!(n >= 1)) erro = "O prazo precisa ser de ao menos uma parcela.";
-    else if (n > 600) erro = "O prazo máximo desta simulação é 600 parcelas.";
+    else if (n > 18) erro = "O prazo vai até 18 parcelas.";
     else if (!(carencia >= 1)) erro = "Informe quantos dias faltam para a 1ª parcela.";
     else if (!(iofPct >= 0 && iofPct < 100)) erro = "O IOF precisa ser um percentual válido.";
     else if (!(tcc >= 0)) erro = "O TCC não pode ser negativo.";
 
     els.erro.hidden = !erro;
     els.erro.textContent = erro;
-    if (erro) return;
+    if (erro) { els.tccTexto.textContent = ""; return; }
 
     const t = instantes(n, carencia);
     const fator = fatorVP(t, i);
@@ -725,6 +786,18 @@
       }
     }
     const iof = financiado * (iofPct / 100);
+
+    // O peso da tarifa fica à vista: sem isso, um TCC esquecido em zero passa
+    // despercebido, e ele sozinho desloca a parcela em mais de 10% num
+    // contrato pequeno — muito mais que qualquer erro no IOF.
+    if (!(tcc > 0)) {
+      els.tccTexto.textContent = "sem tarifa na conta";
+    } else if (modo === "valor") {
+      const semTcc = Math.round((solicitado / (1 - iofPct / 100) / fator) * 100) / 100;
+      els.tccTexto.textContent = `acrescenta ${brl.format(pmt - semTcc)} na parcela`;
+    } else {
+      els.tccTexto.textContent = `tira ${brl.format(tcc)} do liberado`;
+    }
 
     linhas = calcular(financiado, i, t, pmt);
 
@@ -831,10 +904,19 @@
 
   par(el("btUltimas"), el("btTodas"), (ehA) => { trecho = ehA ? "ultimas" : "todas"; });
 
+  // Antes do render: digitar no campo desliga a estimativa, e quem tem o
+  // contrato na mão manda no número. Se este ouvinte viesse depois, o render
+  // rodaria com iofManual ainda falso e apagaria o que acabou de ser digitado.
+  // Atribuir .value por código não dispara "input", então o preenchimento
+  // automático não se confunde com edição.
+  els.iofPct.addEventListener("input", () => { iofManual = true; });
+
   for (const campo of [els.principal, els.taxa, els.prazo, els.pagas,
                        els.carencia, els.iofPct, els.tcc]) {
     campo.addEventListener("input", render);
   }
+
+  els.iofVoltar.addEventListener("click", () => { iofManual = false; render(); });
 
   // O gráfico é bitmap: não reflui sozinho quando a largura muda.
   window.addEventListener("resize", () => desenhar(linhas));
