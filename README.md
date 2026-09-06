@@ -76,6 +76,43 @@ R$ 260,01 e R$ 633,48.
 O prazo vai até 18, que é o teto do produto. Fora dessa faixa a estimativa do
 IOF não foi observada.
 
+### A tarifa, confirmada
+
+A regra do TCC — cobrado só no **primeiro cadastro** do cliente, cláusula
+II.6 — estava apoiada em dois contratos, um com e outro sem, e faltava um
+terceiro. Em 06/09/2026 vieram dois de uma vez, e eles resolvem a questão
+sem depender de nenhum demonstrativo:
+
+| | Contrato C | Contrato D |
+| --- | --- | --- |
+| Liberado | R$ 476,00 | R$ 538,00 |
+| Prazo × parcela | 10 × R$ 100,00 | 15 × R$ 100,00 |
+| Carência | 20 dias | 20 dias |
+| Cliente | já tinha 3 contratos | a mesma |
+
+Mesma cliente, mesmo dia, **mesma parcela em dois prazos**. É essa coincidência
+que resolve: a tarifa seria idêntica nos dois, então a diferença de R$ 62
+entre os liberados **a elimina da equação**. Sobra uma incógnita — a taxa —
+e ela devolve **17,99% ao mês**, que é a dos contratos A e B sem nunca ter
+sido informada. Achar de volta um número que não foi dado é a confirmação
+mais forte que este modelo teve.
+
+Para os R$ 130 terem sido cobrados, a taxa precisaria ser **10,91% ao mês**,
+metade do que o produto pratica. Não foram — e a cliente já era cadastrada,
+que é exatamente o que a cláusula II.6 prevê.
+
+Duas consequências:
+
+- **Contrato novo de cliente antigo não paga tarifa.** Só o primeiro cadastro
+  paga. Na dúvida sobre o histórico da pessoa, continue cotando como cliente
+  novo: erra para cima e a parcela real chega menor que a prometida.
+- **Refinanciamento não paga**, porque quem refinancia já tem cadastro.
+
+Nesses dois contratos o modelo erra cerca de **1,5% para menos** com a taxa
+em 18% cravados. A carência de 20 dias é mais curta que as observadas antes
+(25 e 40), então é a ponta da faixa onde a estimativa do IOF foi ajustada —
+e ela erra para o lado seguro.
+
 ## Limites conhecidos
 
 - O **CET sai de 0,05 a 0,1 ponto abaixo do oficial**. A fórmula do Banco
@@ -85,9 +122,8 @@ IOF não foi observada.
   próprias da instituição — se aceita antecipar parcela avulsa ou só quitação
   total — não estão contempladas.
 
-- A regra da tarifa — cobrada no cadastro novo — está **apoiada em dois
-  contratos**, um com e outro sem. Explica os dois e é o que a cláusula II.6
-  descreve, mas ainda não foi confirmada em um terceiro.
+- A regra da tarifa **foi confirmada em 06/09/2026** e saiu daqui — ver
+  *A tarifa, confirmada*, acima.
 
 Se os números divergirem do sistema, as suspeitas nessa ordem: **tarifa** (é o
 único encargo que move mais de R$ 1 na parcela), dias até a 1ª parcela,
