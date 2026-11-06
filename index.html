@@ -660,15 +660,22 @@
    * A estrutura é a da lei — uma parcela fixa mais uma diária sobre o prazo —
    * mas o prazo que a instituição usa não é o da amortização: aplicar a regra
    * padrão sobre a tabela Price dá quase o dobro do IOF que os contratos
-   * mostram. Então os dias efetivos vêm de reta ajustada a dois contratos
-   * reais (9x/25 dias e 15x/40 dias), que ela reproduz com erro de centavos.
+   * mostram. Então os "dias efetivos" vêm de um ajuste a contratos reais.
    *
-   * É estimativa, não fórmula oficial: vale enquanto o prazo estiver na faixa
-   * observada. Errar o IOF em toda a faixa plausível move menos de R$ 2 na
-   * parcela — o campo continua editável para receber o valor do contrato.
+   * Antes era uma RETA ajustada a dois contratos (9x/25 e 15x/40 dias); ela
+   * acertava esses dois mas ESTOURAVA o IOF em contrato curto (um 3x real saiu
+   * 0,78%, e a reta dava ~1,0%). Agora é uma CURVA (2º grau) por TRÊS contratos
+   * reais — 3x/21, 9x/25 e 15x/40 dias — que reproduz os três com erro de
+   * centavos e corrige o contrato curto. Fora de 3–18 parcelas, trava nas
+   * pontas para não extrapolar.
+   *
+   * É estimativa, não fórmula oficial. O campo continua editável para receber o
+   * valor do contrato quando ele existir.
    */
   function iofEstimado(n, carenciaDias) {
-    const dias = carenciaDias + 40.9 + 5.68 * n;
+    const nn = Math.max(3, Math.min(18, n));
+    const base = -13.25 + 15.3067 * nn - 0.401111 * nn * nn;
+    const dias = carenciaDias + base;
     const sobreOPrincipal = 0.0038 + 0.000082 * dias;
     return (sobreOPrincipal / (1 + sobreOPrincipal)) * 100;
   }
